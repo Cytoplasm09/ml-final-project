@@ -20,9 +20,11 @@ def clean_dataset(df: pd.DataFrame, imputer: SimpleImputer) -> pd.DataFrame:
     
     clean['Support Calls'] = pd.to_numeric(clean['Support Calls'].replace('none', 0))
     
-    impute_missing(clean, ['Tenure', 'Support Calls', 'Last Interaction'], imputer)
+    # impute missing values only on columns with missing values
+    imputer = impute_missing(clean, ['Tenure', 'Support Calls', 'Last Interaction'], imputer)
 
     # drop columns that are not useful for ML or leak data
+    # TODO: TRY KEEPING GENDER
     clean = clean.drop(columns=['Gender', 'Last Due Date', 'Last Payment Date', 'Customer Status', 'CustomerID'])
 
     return clean, imputer

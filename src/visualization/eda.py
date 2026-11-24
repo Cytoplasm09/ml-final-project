@@ -4,6 +4,14 @@ import matplotlib.pyplot as plt
 
 
 def plot_eda(df: pd.DataFrame) -> None:
+    df.groupby("Last Interaction")["Churn"].mean().plot()
+
+    plt.title("Churn Rate on Each Day Past Last Interaction")
+
+    plt.xlabel("Days since last interaction")
+    plt.ylabel("Churn rate")
+
+    plt.show()
     # """Create exploratory plots including bivariate views colored by fraud."""
     # sns.countplot(x='fraud', data=df)
     # plt.title('Fraud Class Distribution')
