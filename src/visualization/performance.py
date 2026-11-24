@@ -11,7 +11,7 @@ def plot_confusion_matrices(y_test, y_pred_baseline, y_pred_knn) -> None:
 
     fig, axes = plt.subplots(1, 2, figsize=(10, 4))
     sns.heatmap(conf_baseline, annot=True, fmt='d', cmap='Reds', ax=axes[0])
-    axes[0].set_title('Never Fraud')
+    axes[0].set_title('Decision Tree')
     sns.heatmap(conf_knn, annot=True, fmt='d', cmap='Blues', ax=axes[1])
     axes[1].set_title('3-NN')
     plt.tight_layout()
@@ -33,7 +33,7 @@ def plot_performance_comparison(y_test, y_pred_baseline, y_pred_knn) -> None:
         recall_score(y_test, y_pred_knn),
         f1_score(y_test, y_pred_knn)
     ]
-    df = pd.DataFrame({'Metric': metrics, 'k-NN': knn_scores, 'Never Fraud': baseline_scores})
+    df = pd.DataFrame({'Metric': metrics, 'k-NN': knn_scores, 'Decision Tree': baseline_scores})
     df.plot(x='Metric', kind='bar', figsize=(8, 5))
     plt.ylim(0, 1)
     plt.title('Model Performance Comparison')

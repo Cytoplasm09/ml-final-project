@@ -8,8 +8,8 @@ import matplotlib.pyplot as plt
 
 def split_data(df: pd.DataFrame):
     """Split dataframe into train/validation/test sets."""
-    X = df.drop("fraud", axis=1)
-    y = df["fraud"]
+    X = df.drop("Churn", axis=1)
+    y = df["Churn"]
     X_temp, X_test, y_temp, y_test = train_test_split(
         X, y, test_size=0.2, random_state=123, stratify=y
     )

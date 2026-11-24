@@ -2,10 +2,10 @@ import pandas as pd
 
 
 def load_dataset(file_path: str) -> pd.DataFrame:
-    """Load the credit card transaction dataset."""
+    """Load the dataset."""
     return pd.read_csv(file_path)
 
 
 if __name__ == "__main__":
-    df = load_dataset("data/raw/card_transdata.csv")
+    df = load_dataset("data/raw/train.csv")
     print(df.head())

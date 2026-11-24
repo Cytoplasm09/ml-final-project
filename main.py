@@ -3,7 +3,7 @@ from src.data.preprocess import clean_dataset
 from src.visualization.eda import plot_eda
 from src.models.train_model import split_data, plot_roc_curve
 from src.models.knn_model import train_knn_model
-from src.models.dumb_model import train_dumb_model
+from src.models.dt_model import train_dt_model
 from src.visualization.performance import (
     plot_confusion_matrices,
     plot_performance_comparison,
@@ -11,11 +11,12 @@ from src.visualization.performance import (
 from sklearn.metrics import confusion_matrix
 import matplotlib.pyplot as plt
 import seaborn as sns
+import pandas as pd
 
 
 def main() -> None:
     print("---Loading data...")
-    raw_df = load_dataset("data/raw/card_transdata.csv")
+    raw_df = load_dataset("data/raw/train.csv")
     
     # Print shape of the raw dataset
     print(f"Raw dataset shape: {raw_df.shape}")
@@ -33,23 +34,23 @@ def main() -> None:
 
     print("---Training models...")
     knn_model = train_knn_model(X_train, y_train)
-    dumb_model = train_dumb_model(X_train, y_train)
+    dt_model = train_dt_model(X_train, y_train)
 
     print("---Evaluating on validation set...")
     y_val_pred_knn = knn_model.predict(X_val)
-    y_val_pred_dumb = dumb_model.predict(X_val)
+    y_val_pred_dt = dt_model.predict(X_val)
 
     val_prob_knn = knn_model.predict_proba(X_val)[:, 1]
-    val_prob_dumb = dumb_model.predict_proba(X_val)[:, 1]
+    val_prob_dt = dt_model.predict_proba(X_val)[:, 1]
 
-    plot_confusion_matrices(y_val, y_val_pred_dumb, y_val_pred_knn)
-    plot_performance_comparison(y_val, y_val_pred_dumb, y_val_pred_knn)
+    plot_confusion_matrices(y_val, y_val_pred_dt, y_val_pred_knn)
+    plot_performance_comparison(y_val, y_val_pred_dt, y_val_pred_knn)
 
-    auc_dumb = plot_roc_curve(y_val, val_prob_dumb, "Never Fraud")
+    auc_dt = plot_roc_curve(y_val, val_prob_dt, "DT")
     auc_knn = plot_roc_curve(y_val, val_prob_knn, "3-NN")
 
-    best_model = knn_model if auc_knn >= auc_dumb else dumb_model
-    best_label = "3-NN" if best_model is knn_model else "Never Fraud"
+    best_model = knn_model if auc_knn >= auc_dt else dt_model
+    best_label = "3-NN" if best_model is knn_model else "DT"
 
     print(f"---Testing best model ({best_label})...")
     y_test_pred = best_model.predict(X_test)
@@ -64,9 +65,18 @@ def main() -> None:
     plt.ylabel("Actual")
     plt.tight_layout()
     plt.show()
+    
+    print(f"---Testing {best_label} with REAL training data...")
+    raw_test_df = load_dataset("data/raw/test.csv")
+    clean_test_df = clean_dataset(raw_test_df)
+    y_real_test_pred = best_model.predict(clean_test_df)
+    real_test_prob = best_model.predict_proba(clean_test_df)[:, 1]
+    output = raw_test_df[['CustomerID']]
+    output['Churn'] = real_test_prob
+    
+    output.to_csv("output/submission.csv", index=False)
 
     print("Done.")
-
 
 if __name__ == "__main__":
     main()
