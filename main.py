@@ -22,7 +22,7 @@ def main() -> None:
     print(f"Raw dataset shape: {raw_df.shape}")
 
     print("---Cleaning data...")
-    clean_df = clean_dataset(raw_df)
+    clean_df, imputer = clean_dataset(raw_df, None)
 
     print(f"Cleaned dataset shape: {clean_df.shape}")
 
@@ -66,9 +66,9 @@ def main() -> None:
     plt.tight_layout()
     plt.show()
     
-    print(f"---Testing {best_label} with REAL training data...")
+    print(f"---Using {best_label} for predictions on test data...")
     raw_test_df = load_dataset("data/raw/test.csv")
-    clean_test_df = clean_dataset(raw_test_df)
+    clean_test_df, imputer = clean_dataset(raw_test_df, imputer)
     y_real_test_pred = best_model.predict(clean_test_df)
     real_test_prob = best_model.predict_proba(clean_test_df)[:, 1]
     output = raw_test_df[['CustomerID']]

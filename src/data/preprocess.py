@@ -2,25 +2,30 @@ import os
 import pandas as pd
 from .load_data import load_dataset
 
+#imputer
+from sklearn.impute import SimpleImputer
 
-def clean_dataset(df: pd.DataFrame) -> pd.DataFrame:
+
+def clean_dataset(df: pd.DataFrame, imputer: SimpleImputer) -> pd.DataFrame:
     """Clean the dataset by dropping rows with missing values."""
     clean = df.copy()
     
     one_coding(clean)
     
-    clean['Tenure'] = clean['Tenure'].fillna(clean['Tenure'].mean())
-
+    # Convert date columns to datetime format
+    clean['Last Due Date'] = pd.to_datetime(clean['Last Due Date'], format="%m-%d")
+    clean['Last Payment Date'] = pd.to_datetime(clean['Last Payment Date'], format="%m-%d")
+    # Fill in missing Payment Delay values by subtracting Last Payment Date with Last Due Date
+    clean['Payment Delay'] = (clean['Last Payment Date'] - clean['Last Due Date']).dt.days
+    
     clean['Support Calls'] = pd.to_numeric(clean['Support Calls'].replace('none', 0))
-    clean['Support Calls'] = clean['Support Calls'].fillna(clean['Support Calls'].mean())
-    clean['Payment Delay'] = clean['Payment Delay'].fillna(clean['Payment Delay'].mean())
-    clean['Last Interaction'] = clean['Last Interaction'].fillna(clean['Last Interaction'].mean())
     
-    clean = clean.drop(columns=['Gender', 'Last Due Date', 'Last Payment Date', 'Customer Status', 'CustomerID', 'Payment Delay'])
-    
-    if clean.isna().sum().sum() != 0: 
-        raise Exception(clean.isna().sum())
-    return clean
+    impute_missing(clean, ['Tenure', 'Support Calls', 'Last Interaction'], imputer)
+
+    # drop columns that are not useful for ML or leak data
+    clean = clean.drop(columns=['Gender', 'Last Due Date', 'Last Payment Date', 'Customer Status', 'CustomerID'])
+
+    return clean, imputer
 
 
 def one_coding(df: pd.DataFrame):
@@ -41,6 +46,15 @@ def one_coding(df: pd.DataFrame):
         'Annual': 2
         })
 
+
+def impute_missing(df: pd.DataFrame, cols: list, imputer: SimpleImputer=None) -> SimpleImputer:
+    if imputer is None: 
+        imputer = SimpleImputer(strategy='median')
+        imputer.fit(df[cols])
+    
+    df[cols] = imputer.transform(df[cols])
+
+    return imputer
 
 if __name__ == "__main__":
     # Load the raw dataset
