@@ -5,7 +5,7 @@ from sklearn.preprocessing import StandardScaler
 
 
 def train_knn_model(X_train: pd.DataFrame, y_train: pd.Series) -> KNeighborsClassifier:
-    """Train and return a 3-NN classifier."""
+    """Train and return a 25-NN classifier."""
     model = make_pipeline(
         StandardScaler(),
         KNeighborsClassifier(n_neighbors=25)

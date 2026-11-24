@@ -7,5 +7,5 @@ def load_dataset(file_path: str) -> pd.DataFrame:
 
 
 if __name__ == "__main__":
-    df = load_dataset("data/raw/train.csv")
+    df = load_dataset("data/raw/churn_train.csv")
     print(df.head())

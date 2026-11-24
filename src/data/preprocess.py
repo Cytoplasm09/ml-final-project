@@ -2,54 +2,44 @@ import os
 import pandas as pd
 from .load_data import load_dataset
 
-#imputer
 from sklearn.impute import SimpleImputer
 
 
-def clean_dataset(df: pd.DataFrame, imputer: SimpleImputer) -> pd.DataFrame:
-    """Clean the dataset by dropping rows with missing values."""
-    clean = df.copy()
+def clean_dataset(df: pd.DataFrame, imputer: SimpleImputer) -> tuple[pd.DataFrame, SimpleImputer]:
+    """Clean the raw churn data.
+
+    Fills in missing values and drops columns that are identifiers or leak the target.
+    Pass imputer=None for training data, so a new imputer is fitted; pass the
+    returned imputer when cleaning test data, so the training medians are reused.
+
+    Returns the cleaned DataFrame and the fitted imputer.
+    """
+    df = df.copy()
     
-    one_coding(clean)
+    # replace "none" with 0 for consistency
+    df['Support Calls'] = pd.to_numeric(df['Support Calls'].replace('none', 0))
     
     # Convert date columns to datetime format
-    clean['Last Due Date'] = pd.to_datetime(clean['Last Due Date'], format="%m-%d")
-    clean['Last Payment Date'] = pd.to_datetime(clean['Last Payment Date'], format="%m-%d")
+    df['Last Due Date'] = pd.to_datetime(df['Last Due Date'], format="%m-%d")
+    df['Last Payment Date'] = pd.to_datetime(df['Last Payment Date'], format="%m-%d")
     # Fill in missing Payment Delay values by subtracting Last Payment Date with Last Due Date
-    clean['Payment Delay'] = (clean['Last Payment Date'] - clean['Last Due Date']).dt.days
-    
-    clean['Support Calls'] = pd.to_numeric(clean['Support Calls'].replace('none', 0))
+    df['Payment Delay'] = (df['Last Payment Date'] - df['Last Due Date']).dt.days
     
     # impute missing values only on columns with missing values
-    imputer = impute_missing(clean, ['Tenure', 'Support Calls', 'Last Interaction'], imputer)
+    imputer = impute_missing(df, ['Tenure', 'Support Calls', 'Last Interaction'], imputer)
 
     # drop columns that are not useful for ML or leak data
     # TODO: TRY KEEPING GENDER
-    clean = clean.drop(columns=['Gender', 'Last Due Date', 'Last Payment Date', 'Customer Status', 'CustomerID'])
+    df = df.drop(columns=['Gender', 'Last Due Date', 'Last Payment Date', 'Customer Status', 'CustomerID'])
 
-    return clean, imputer
-
-
-def one_coding(df: pd.DataFrame):
-
-    df['Support Calls'] = df['Support Calls'].replace({
-        'none': 0,
-        })
-
-    df['Subscription Type'] = df['Subscription Type'].replace({
-        'Basic': 0,
-        'Standard': 1,
-        'Premium': 2
-        })
-
-    df['Contract Length'] = df['Contract Length'].replace({
-        'Monthly': 0,
-        'Quarterly': 1,
-        'Annual': 2
-        })
-
+    return df, imputer
 
 def impute_missing(df: pd.DataFrame, cols: list, imputer: SimpleImputer=None) -> SimpleImputer:
+    """Fill missing values in `cols` with the median, in place.
+
+    Fits a new median imputer when `imputer` is None, otherwise reuses the given one.
+    Returns the imputer so it can be applied to other data later.
+    """
     if imputer is None: 
         imputer = SimpleImputer(strategy='median')
         imputer.fit(df[cols])
@@ -60,12 +50,12 @@ def impute_missing(df: pd.DataFrame, cols: list, imputer: SimpleImputer=None) ->
 
 if __name__ == "__main__":
     # Load the raw dataset
-    raw = load_dataset("data/raw/train.csv")
+    raw = load_dataset("data/raw/churn_train.csv")
     # Clean the dataset
-    cleaned = clean_dataset(raw)
+    cleaned, _ = clean_dataset(raw, None)
     # Ensure the processed directory exists
     os.makedirs("data/processed", exist_ok=True)
     # Save the cleaned data
-    processed_path = "data/processed/train.csv"
+    processed_path = "data/processed/churn_clean.csv"
     cleaned.to_csv(processed_path, index=False)
     print(f"Cleaned data saved to {processed_path}")

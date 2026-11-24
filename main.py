@@ -1,86 +1,134 @@
 from src.data.load_data import load_dataset
 from src.data.preprocess import clean_dataset
 from src.visualization.eda import plot_eda
-from src.models.train_model import split_data, plot_roc_curve
+from src.data.split_data import split_dataset
+from src.features.build_features import build_features
+from src.models.train_model import plot_roc_curves
 from src.models.knn_model import train_knn_model
 from src.models.dt_model import train_dt_model
 from src.visualization.performance import (
     plot_confusion_matrices,
     plot_performance_comparison,
 )
-from sklearn.metrics import confusion_matrix
+from src.utils.helper_functions import print_header, print_info, start_step, end_step
+from sklearn.metrics import confusion_matrix, roc_auc_score
 import matplotlib.pyplot as plt
 import seaborn as sns
-import pandas as pd
 import os
+
+TRAIN_PATH = "data/raw/churn_train.csv"
+TEST_PATH = "data/raw/churn_test.csv"
+SUBMISSION_PATH = "output/submission.csv"
+
+# Colors for the models in the combined ROC plot. Each model keeps its color on every curve.
+DT_COLOR = "#2a6fdb"
+KNN_COLOR = "#e07b1a"
 
 
 def main() -> None:
-    print("---Loading data...")
-    raw_df = load_dataset("data/raw/train.csv")
-    
-    # Print shape of the raw dataset
-    print(f"Raw dataset shape: {raw_df.shape}")
+    print_header("Customer Churn Prediction")
 
-    print("---Cleaning data...")
+    t = start_step("Loading data")
+    raw_df = load_dataset(TRAIN_PATH)
+    end_step(t)
+    print_info("Raw dataset shape", raw_df.shape)
+
+    t = start_step("Cleaning data")
     clean_df, imputer = clean_dataset(raw_df, None)
+    end_step(t)
+    print_info("Cleaned dataset shape", clean_df.shape)
 
-    print(f"Cleaned dataset shape: {clean_df.shape}")
+    t = start_step("Building features")
+    clean_df = build_features(clean_df)
+    end_step(t)
 
-    print("---Creating EDA visuals...")
+    # Plotting steps are not timed: plt.show() waits until the window is closed.
+    start_step("Creating EDA visuals")
     plot_eda(clean_df)
 
-    print("---Splitting data...")
-    X_train, X_val, X_test, y_train, y_val, y_test = split_data(clean_df)
+    t = start_step("Splitting data")
+    X_train, X_val, X_test, y_train, y_val, y_test = split_dataset(clean_df)
+    end_step(t)
+    print_info("Training rows", len(X_train))
+    print_info("Validation rows", len(X_val))
+    print_info("Test rows", len(X_test))
 
-    print("---Training models...")
+    t = start_step("Training 25-NN")
     knn_model = train_knn_model(X_train, y_train)
+    end_step(t)
+
+    t = start_step("Training decision tree")
     dt_model = train_dt_model(X_train, y_train)
+    end_step(t)
 
-    print("---Evaluating on validation set...")
+    t = start_step("Evaluating 25-NN on validation set")
     y_val_pred_knn = knn_model.predict(X_val)
-    y_val_pred_dt = dt_model.predict(X_val)
-
     val_prob_knn = knn_model.predict_proba(X_val)[:, 1]
-    val_prob_dt = dt_model.predict_proba(X_val)[:, 1]
+    end_step(t)
 
+    t = start_step("Evaluating decision tree on validation set")
+    y_val_pred_dt = dt_model.predict(X_val)
+    val_prob_dt = dt_model.predict_proba(X_val)[:, 1]
+    end_step(t)
+
+    start_step("Plotting validation results")
     plot_confusion_matrices(y_val, y_val_pred_dt, y_val_pred_knn)
     plot_performance_comparison(y_val, y_val_pred_dt, y_val_pred_knn)
 
-    auc_dt = plot_roc_curve(y_val, val_prob_dt, "DT")
-    auc_knn = plot_roc_curve(y_val, val_prob_knn, "3-NN")
+    # Pick the model with the higher validation AUC
+    auc_knn = roc_auc_score(y_val, val_prob_knn)
+    auc_dt = roc_auc_score(y_val, val_prob_dt)
+    print_info("25-NN validation AUC", f"{auc_knn:.3f}")
+    print_info("DT validation AUC", f"{auc_dt:.3f}")
 
-    best_model = knn_model if auc_knn >= auc_dt else dt_model
-    best_label = "3-NN" if best_model is knn_model else "DT"
+    if auc_knn >= auc_dt:
+        best_model, best_label, best_color = knn_model, "25-NN", KNN_COLOR
+    else:
+        best_model, best_label, best_color = dt_model, "DT", DT_COLOR
+    print_info("Best model", best_label)
 
-    print(f"---Testing best model ({best_label})...")
+    t = start_step(f"Testing best model ({best_label})")
     y_test_pred = best_model.predict(X_test)
     test_prob = best_model.predict_proba(X_test)[:, 1]
-    plot_roc_curve(y_test, test_prob, f"Test {best_label}")
+    print_info(f"{best_label} test AUC", f"{roc_auc_score(y_test, test_prob):.3f}")
+    end_step(t)
+
+    start_step("Plotting ROC curves and test confusion matrix")
+    auc_scores = plot_roc_curves(
+        [
+            {"label": "DT (validation)", "y_true": y_val, "y_score": val_prob_dt, "color": DT_COLOR},
+            {"label": "25-NN (validation)", "y_true": y_val, "y_score": val_prob_knn, "color": KNN_COLOR},
+            {"label": f"{best_label} (test)", "y_true": y_test, "y_score": test_prob,
+             "color": best_color, "style": "--"},
+        ],
+        title="ROC Curves",
+    )
 
     cm = confusion_matrix(y_test, y_test_pred)
     plt.figure()
     sns.heatmap(cm, annot=True, fmt="d", cmap="Blues")
-    plt.title("Best Model Confusion Matrix")
+    plt.title(f"Best Model ({best_label}) Confusion Matrix - Test Set")
     plt.xlabel("Predicted")
     plt.ylabel("Actual")
     plt.tight_layout()
     plt.show()
-    
-    print(f"---Using {best_label} for predictions on test data...")
-    raw_test_df = load_dataset("data/raw/test.csv")
-    clean_test_df, imputer = clean_dataset(raw_test_df, imputer)
-    
-    y_real_test_pred = best_model.predict(clean_test_df)
-    real_test_prob = best_model.predict_proba(clean_test_df)[:, 1]
-    
-    output = raw_test_df[['CustomerID']]
-    output['Churn'] = real_test_prob
-    
-    os.makedirs("output", exist_ok=True)
-    output.to_csv("output/submission.csv", index=False)
 
-    print("Done.")
+    t = start_step(f"Predicting churn for test file ({best_label})")
+    raw_test_df = load_dataset(TEST_PATH)
+    clean_test_df, imputer = clean_dataset(raw_test_df, imputer)
+    clean_test_df = build_features(clean_test_df)
+    real_test_prob = best_model.predict_proba(clean_test_df)[:, 1]
+
+    output = raw_test_df[["CustomerID"]].copy()
+    output["Churn"] = real_test_prob
+    os.makedirs("output", exist_ok=True)
+    output.to_csv(SUBMISSION_PATH, index=False)
+    end_step(t)
+    print_info("Predictions saved to", SUBMISSION_PATH)
+
+    print()
+    print_header("Done")
+
 
 if __name__ == "__main__":
     main()
