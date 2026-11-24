@@ -1,54 +1,74 @@
-# Credit Card Fraud Detection Example
+# Customer Churn Prediction
 
-This repository is an example template that demonstrates how to structure a machine learning project for reproducibility. It includes a minimal end-to-end workflow for detecting credit card fraud using scikit‑learn.
+MAT311 final project. The goal is to predict whether a subscription customer will churn (cancel), using their usage, support and billing history. The project compares a k-nearest neighbors (KNN) model with a decision tree, picks the better one by ROC AUC, and uses it to predict churn probabilities for an unlabeled test set.
 
-## Purpose
+## Data
 
-The layout of this project mirrors the recommended directory organization shown in the assignment instructions. It can be used as a starting point for your own work or as a reference when showcasing your skills to potential employers. All code is well documented and grouped by task so you can easily build upon it.
+The data lives in `data/raw/`:
+
+- `train.csv`: about 303,000 customers with a `Churn` label (1 = churned, 0 = stayed). Roughly 30% of customers churned.
+- `test.csv`: customers without labels. The pipeline predicts churn for these.
+
+Each row has `CustomerID`, `Age`, `Gender`, `Tenure`, `Usage Frequency`, `Support Calls`, `Payment Delay`, `Subscription Type`, `Contract Length`, `Total Spend`, `Last Interaction`, `Customer Status`, `Last Due Date` and `Last Payment Date`.
+
+## Pipeline
+
+`main.py` runs every step from start to finish:
+
+1. Load and clean the training data (encode categories, fill in missing values, drop unused and leaking columns).
+2. Plot exploratory charts.
+3. Split the data into training, validation and test sets.
+4. Train a KNN model and a decision tree.
+5. Compare them on the validation set and check the better one on the test set.
+6. Predict churn probabilities for `data/raw/test.csv` and save them to `output/submission.csv`.
 
 ## Project layout
 
 ```
 .
-├── main.py                 # Entry point that runs the entire pipeline
-├── requirements.txt        # Python dependencies
+├── main.py                  # Runs the whole pipeline
+├── requirements.txt         # Package versions used
 ├── data/
-│   ├── processed/          # Created after running the pipeline
 │   └── raw/
-│       └── card_transdata.csv
+│       ├── train.csv
+│       └── test.csv
 ├── notebooks/
-│   └── credit_card_fraud_analysis.ipynb
+│   └── customer_church_analysis.ipynb   # Exploration and prototyping
+├── output/
+│   └── submission.csv       # Created by main.py (not tracked by git)
 └── src/
     ├── data/
     │   ├── load_data.py
-    │   ├── preprocess.py
-    │   └── split_data.py
-    ├── features/
-    │   └── build_features.py
+    │   └── preprocess.py
     ├── models/
-    │   ├── train_model.py
-    │   ├── dumb_model.py
-    │   └── knn_model.py
-    ├── utils/
-    │   └── helper_functions.py
+    │   ├── train_model.py   # Train/validation/test split and ROC curve helper
+    │   ├── knn_model.py
+    │   └── dt_model.py
     └── visualization/
         ├── eda.py
         └── performance.py
 ```
 
-`main.py` imports the modules inside `src/` and executes them to reproduce the analysis and results. Jupyter notebooks are provided only for prototyping and exploration—they are **not** meant to be the main entry point of the project.
+The notebook is only for exploration. `main.py` is the entry point that reproduces the results.
 
-Some directories such as `data/external/`, `src/utils/` and `tests/` may be empty, but the folder structure is provided to illustrate how a complete project should look.
+## Running it
 
-## Running the example
-
-Install the dependencies and run the pipeline. You should use the versions of the dependencies as specified by the requirements file:
+Set up the environment (Python 3.11):
 
 ```bash
-conda create -n credit_fraud --file requirements.txt
-conda activate credit_fraud
+conda create -n data-science python=3.11
+conda activate data-science
+pip install -r requirements.txt
+```
+
+Run the pipeline from the project root:
+
+```bash
 python main.py
 ```
 
-This will load the dataset, perform basic feature engineering, train a simple model and produce visualizations similar to those in the notebook.
-The cleaned data will be written to `data/processed/` and all plots will be displayed interactively.
+Plots open one at a time. Close each window to continue. The predictions are saved to `output/submission.csv`.
+
+---
+
+*🤖✨ README written with the help of Claude (Anthropic).*

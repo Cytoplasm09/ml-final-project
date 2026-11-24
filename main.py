@@ -12,6 +12,7 @@ from sklearn.metrics import confusion_matrix
 import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
+import os
 
 
 def main() -> None:
@@ -69,11 +70,14 @@ def main() -> None:
     print(f"---Using {best_label} for predictions on test data...")
     raw_test_df = load_dataset("data/raw/test.csv")
     clean_test_df, imputer = clean_dataset(raw_test_df, imputer)
+    
     y_real_test_pred = best_model.predict(clean_test_df)
     real_test_prob = best_model.predict_proba(clean_test_df)[:, 1]
+    
     output = raw_test_df[['CustomerID']]
     output['Churn'] = real_test_prob
     
+    os.makedirs("output", exist_ok=True)
     output.to_csv("output/submission.csv", index=False)
 
     print("Done.")
