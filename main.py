@@ -53,15 +53,21 @@ def main() -> None:
     print_info("Validation rows", len(X_val))
     print_info("Test rows", len(X_test))
 
-    t = start_step("Training 25-NN")
-    knn_model = train_knn_model(X_train, y_train)
+    t = start_step("Training k-NN")
+    knn_model, k = train_knn_model(X_train, y_train)
     end_step(t)
 
     t = start_step("Training decision tree")
-    dt_model = train_dt_model(X_train, y_train)
+    dt_model, depth = train_dt_model(X_train, y_train)
     end_step(t)
 
-    t = start_step("Evaluating 25-NN on validation set")
+    # Labels that show the hyperparameters chosen by the grid search
+    knn_label = f"k-NN (k={k})"
+    dt_label = f"DT (depth={depth})"
+    print_info("Chosen k", k)
+    print_info("Chosen max depth", depth)
+
+    t = start_step("Evaluating k-NN on validation set")
     y_val_pred_knn = knn_model.predict(X_val)
     val_prob_knn = knn_model.predict_proba(X_val)[:, 1]
     end_step(t)
@@ -72,19 +78,19 @@ def main() -> None:
     end_step(t)
 
     start_step("Plotting validation results")
-    plot_confusion_matrices(y_val, y_val_pred_dt, y_val_pred_knn)
-    plot_performance_comparison(y_val, y_val_pred_dt, y_val_pred_knn)
+    plot_confusion_matrices(y_val, y_val_pred_dt, y_val_pred_knn, dt_label, knn_label)
+    plot_performance_comparison(y_val, y_val_pred_dt, y_val_pred_knn, dt_label, knn_label)
 
     # Pick the model with the higher validation AUC
     auc_knn = roc_auc_score(y_val, val_prob_knn)
     auc_dt = roc_auc_score(y_val, val_prob_dt)
-    print_info("25-NN validation AUC", f"{auc_knn:.3f}")
-    print_info("DT validation AUC", f"{auc_dt:.3f}")
+    print_info(f"{knn_label} validation AUC", f"{auc_knn:.3f}")
+    print_info(f"{dt_label} validation AUC", f"{auc_dt:.3f}")
 
     if auc_knn >= auc_dt:
-        best_model, best_label, best_color = knn_model, "25-NN", KNN_COLOR
+        best_model, best_label, best_color = knn_model, knn_label, KNN_COLOR
     else:
-        best_model, best_label, best_color = dt_model, "DT", DT_COLOR
+        best_model, best_label, best_color = dt_model, dt_label, DT_COLOR
     print_info("Best model", best_label)
 
     t = start_step(f"Testing best model ({best_label})")
@@ -96,10 +102,8 @@ def main() -> None:
     start_step("Plotting ROC curves and test confusion matrix")
     auc_scores = plot_roc_curves(
         [
-            {"label": "DT (validation)", "y_true": y_val, "y_score": val_prob_dt, "color": DT_COLOR},
-            {"label": "25-NN (validation)", "y_true": y_val, "y_score": val_prob_knn, "color": KNN_COLOR},
-            {"label": f"{best_label} (test)", "y_true": y_test, "y_score": test_prob,
-             "color": best_color, "style": "--"},
+            {"label": f"{dt_label} (validation)", "y_true": y_val, "y_score": val_prob_dt, "color": DT_COLOR},
+            {"label": f"{knn_label} (validation)", "y_true": y_val, "y_score": val_prob_knn, "color": KNN_COLOR},
         ],
         title="ROC Curves",
     )

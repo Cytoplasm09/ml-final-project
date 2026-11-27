@@ -6,21 +6,23 @@ import matplotlib.pyplot as plt
 from sklearn.metrics import confusion_matrix, accuracy_score, precision_score, recall_score, f1_score
 
 
-def plot_confusion_matrices(y_test, y_pred_dt, y_pred_knn) -> None:
+def plot_confusion_matrices(y_test, y_pred_dt, y_pred_knn,
+                            dt_label: str = 'Decision Tree', knn_label: str = 'k-NN') -> None:
     """Plot confusion matrices for both models."""
     conf_dt = confusion_matrix(y_test, y_pred_dt)
     conf_knn = confusion_matrix(y_test, y_pred_knn)
 
     fig, axes = plt.subplots(1, 2, figsize=(10, 4))
     sns.heatmap(conf_dt, annot=True, fmt='d', cmap='Reds', ax=axes[0])
-    axes[0].set_title('Decision Tree')
+    axes[0].set_title(dt_label)
     sns.heatmap(conf_knn, annot=True, fmt='d', cmap='Blues', ax=axes[1])
-    axes[1].set_title('25-NN')
+    axes[1].set_title(knn_label)
     plt.tight_layout()
     plt.show()
 
 
-def plot_performance_comparison(y_test, y_pred_dt, y_pred_knn) -> None:
+def plot_performance_comparison(y_test, y_pred_dt, y_pred_knn,
+                                dt_label: str = 'Decision Tree', knn_label: str = 'k-NN') -> None:
     """Create a bar chart comparing model metrics."""
     metrics = ['Accuracy', 'Precision', 'Recall', 'F1 Score']
     dt_scores = [
@@ -35,7 +37,7 @@ def plot_performance_comparison(y_test, y_pred_dt, y_pred_knn) -> None:
         recall_score(y_test, y_pred_knn),
         f1_score(y_test, y_pred_knn)
     ]
-    df = pd.DataFrame({'Metric': metrics, 'k-NN': knn_scores, 'Decision Tree': dt_scores})
+    df = pd.DataFrame({'Metric': metrics, knn_label: knn_scores, dt_label: dt_scores})
     df.plot(x='Metric', kind='bar', figsize=(8, 5))
     plt.ylim(0, 1)
     plt.title('Model Performance Comparison')
@@ -55,7 +57,10 @@ if __name__ == "__main__":
     clean, _ = clean_dataset(raw, None)
     features = build_features(clean)
     X_train, X_val, X_test, y_train, y_val, y_test = split_dataset(features)
-    y_pred_dt = train_dt_model(X_train, y_train).predict(X_val)
-    y_pred_knn = train_knn_model(X_train, y_train).predict(X_val)
-    plot_confusion_matrices(y_val, y_pred_dt, y_pred_knn)
-    plot_performance_comparison(y_val, y_pred_dt, y_pred_knn)
+    dt_model, depth = train_dt_model(X_train, y_train)
+    knn_model, k = train_knn_model(X_train, y_train)
+    y_pred_dt = dt_model.predict(X_val)
+    y_pred_knn = knn_model.predict(X_val)
+    dt_label, knn_label = f"DT (depth={depth})", f"k-NN (k={k})"
+    plot_confusion_matrices(y_val, y_pred_dt, y_pred_knn, dt_label, knn_label)
+    plot_performance_comparison(y_val, y_pred_dt, y_pred_knn, dt_label, knn_label)

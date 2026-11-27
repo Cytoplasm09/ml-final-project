@@ -26,11 +26,11 @@ def clean_dataset(df: pd.DataFrame, imputer: SimpleImputer) -> tuple[pd.DataFram
     df['Payment Delay'] = (df['Last Payment Date'] - df['Last Due Date']).dt.days
     
     # impute missing values only on columns with missing values
-    imputer = impute_missing(df, ['Tenure', 'Support Calls', 'Last Interaction'], imputer)
+    #imputer = impute_missing(df, ['Tenure', 'Support Calls', 'Last Interaction'], imputer)
 
     # drop columns that are not useful for ML or leak data
     # TODO: TRY KEEPING GENDER
-    df = df.drop(columns=['Gender', 'Last Due Date', 'Last Payment Date', 'Customer Status', 'CustomerID'])
+    df = df.drop(columns=['Last Due Date', 'Last Payment Date', 'Customer Status', 'CustomerID'])
 
     return df, imputer
 

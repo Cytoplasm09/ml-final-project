@@ -18,6 +18,11 @@ def build_features(df: pd.DataFrame) -> pd.DataFrame:
         'Quarterly': 1,
         'Annual': 2
         })
+    
+    df['Gender'] = df['Gender'].replace({
+        'Male': 0,
+        'Female': 1
+        })
 
     return df
 
